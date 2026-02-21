@@ -3,6 +3,7 @@
 ///////////////////////////////////////
 // Modal window
 
+// Cache DOM elements once (performance + readability)
 const modal = document.querySelector('.modal');
 const overlay = document.querySelector('.overlay');
 const btnCloseModal = document.querySelector('.btn--close-modal');
@@ -17,32 +18,38 @@ const header = document.querySelector('.header');
 const allSections = document.querySelectorAll('.section');
 const imgTargets = document.querySelectorAll('img[data-src]');
 
+// Open modal (prevent default because buttons are links)
 const openModal = function (e) {
   e.preventDefault();
   modal.classList.remove('hidden');
   overlay.classList.remove('hidden');
 };
 
+// Close modal (single source of truth)
 const closeModal = function () {
   modal.classList.add('hidden');
   overlay.classList.add('hidden');
 };
 
+// Attach modal open to multiple buttons
 btnsOpenModal.forEach(btn => btn.addEventListener('click', openModal));
 
 btnCloseModal.addEventListener('click', closeModal);
 overlay.addEventListener('click', closeModal);
 
+// Close modal with ESC key (UX improvement)
 document.addEventListener('keydown', function (e) {
   if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
     closeModal();
   }
 });
 
+// Smooth scroll to section
 btnScrollTo.addEventListener('click', () => {
   section1.scrollIntoView({ behavior: 'smooth' });
 });
 
+// Navigation event delegation (single listener for all links)
 document.querySelector('.nav__links').addEventListener('click', e => {
   e.preventDefault();
 
@@ -52,15 +59,18 @@ document.querySelector('.nav__links').addEventListener('click', e => {
   }
 });
 
+// Tabs component using event delegation
 tabsContainer.addEventListener('click', e => {
   e.preventDefault();
 
   const clicked = e.target.closest('.operations__tab');
-  if (!clicked) return;
+  if (!clicked) return; // Guard clause
 
+  // Activate tab
   tabs.forEach(tab => tab.classList.remove('operations__tab--active'));
   clicked.classList.add('operations__tab--active');
 
+  // Activate corresponding content
   tabsContent.forEach(con =>
     con.classList.remove('operations__content--active'),
   );
@@ -70,6 +80,7 @@ tabsContainer.addEventListener('click', e => {
     .classList.add('operations__content--active');
 });
 
+// Menu fade animation using bind to pass opacity via `this`
 const handleHover = function (e) {
   const clickedLink = e.target;
   const siblings = clickedLink.closest('.nav').querySelectorAll('.nav__link');
@@ -79,13 +90,16 @@ const handleHover = function (e) {
   });
 };
 
-// Hover in
+// Bind controls opacity value via `this`
 nav.addEventListener('mouseover', handleHover.bind(0.5));
-
-// Hover out
 nav.addEventListener('mouseout', handleHover.bind(1));
 
+///////////////////////////////////////
+// Sticky navigation using Intersection Observer
+
+// Pre-calculate nav height for offset
 const navHeight = nav.getBoundingClientRect().height;
+
 const stickyNav = function (entries) {
   const [entry] = entries;
   if (!entry.isIntersecting) nav.classList.add('sticky');
@@ -93,18 +107,22 @@ const stickyNav = function (entries) {
 };
 
 const headerObserver = new IntersectionObserver(stickyNav, {
-  root: null,
+  root: null, // viewport
   threshold: 0,
-  rootMargin: `${navHeight}px`,
+  rootMargin: `${navHeight}px`, // trigger before header fully disappears
 });
 
 headerObserver.observe(header);
 
+///////////////////////////////////////
+// Reveal sections on scroll
+
 const revealSection = (entries, observer) => {
   entries.forEach(entry => {
     if (!entry.isIntersecting) return;
+
     entry.target.classList.remove('section--hidden');
-    observer.unobserve(entry.target);
+    observer.unobserve(entry.target); // stop observing once revealed
   });
 };
 
@@ -113,16 +131,23 @@ const sectionObserver = new IntersectionObserver(revealSection, {
   threshold: 0.15,
 });
 
+// Hide sections initially and observe them
 allSections.forEach(section => {
   sectionObserver.observe(section);
   section.classList.add('section--hidden');
 });
 
+///////////////////////////////////////
+// Lazy loading images
+
 const loadImg = (entries, observer) => {
   const [entry] = entries;
   if (!entry.isIntersecting) return;
+
+  // Replace low-res src with high-res version
   entry.target.src = entry.target.dataset.src;
 
+  // Remove blur class only after image fully loads
   entry.target.addEventListener('load', () => {
     entry.target.classList.remove('lazy-img');
   });
@@ -133,10 +158,13 @@ const loadImg = (entries, observer) => {
 const imgObserver = new IntersectionObserver(loadImg, {
   root: null,
   threshold: 0,
-  rootMargin: '200px',
+  rootMargin: '200px', // preload before image enters viewport
 });
 
 imgTargets.forEach(img => imgObserver.observe(img));
+
+///////////////////////////////////////
+// Slider component (fully self-contained module)
 
 const slider = () => {
   const slides = document.querySelectorAll('.slide');
@@ -147,6 +175,7 @@ const slider = () => {
   let curSlide = 0;
   const maxSlide = slides.length;
 
+  // Generate navigation dots dynamically
   const createDots = () => {
     slides.forEach((_, i) => {
       containerDots.insertAdjacentHTML(
@@ -156,6 +185,7 @@ const slider = () => {
     });
   };
 
+  // Activate the current slide dot
   const activeSlideDot = slide => {
     document
       .querySelectorAll('.dots__dot')
@@ -166,6 +196,7 @@ const slider = () => {
       .classList.add('dots__dot--active');
   };
 
+  // Position slides relative to current slide
   const goToSlide = slide => {
     slides.forEach(
       (s, i) => (s.style.transform = `translateX(${100 * (i - slide)}%)`),
@@ -173,23 +204,13 @@ const slider = () => {
   };
 
   const nextSlide = () => {
-    if (curSlide === maxSlide - 1) {
-      curSlide = 0;
-    } else {
-      curSlide++;
-    }
-
+    curSlide = curSlide === maxSlide - 1 ? 0 : curSlide + 1;
     goToSlide(curSlide);
     activeSlideDot(curSlide);
   };
 
   const prevSlide = () => {
-    if (curSlide === 0) {
-      curSlide = maxSlide - 1;
-    } else {
-      curSlide--;
-    }
-
+    curSlide = curSlide === 0 ? maxSlide - 1 : curSlide - 1;
     goToSlide(curSlide);
     activeSlideDot(curSlide);
   };
@@ -202,17 +223,16 @@ const slider = () => {
 
   init();
 
-  // Event Listeners
+  // Controls
   btnRight.addEventListener('click', nextSlide);
   btnLeft.addEventListener('click', prevSlide);
 
   document.addEventListener('keydown', e => {
-    e.key === 'ArrowLeft' && prevSlide(); // short
+    e.key === 'ArrowLeft' && prevSlide();
     e.key === 'ArrowRight' && nextSlide();
-    // if(e.key === 'ArrowLeft') prevSlide();
-    // if(e.key === 'ArrowRight') nextSlide();
   });
 
+  // Dot navigation (event delegation)
   containerDots.addEventListener('click', e => {
     if (e.target.classList.contains('dots__dot')) {
       curSlide = Number(e.target.dataset.slide);
@@ -221,4 +241,5 @@ const slider = () => {
     }
   });
 };
+
 slider();
